@@ -47,9 +47,11 @@ class AppModel {
     private var eventClearTimer: Timer?
 
     init() {
+#if !targetEnvironment(simulator)
         Task {
             await setupHandTracking()
         }
+#endif
     }
 
     @MainActor
