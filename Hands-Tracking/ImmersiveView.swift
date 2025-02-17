@@ -14,8 +14,7 @@ struct ImmersiveView: View {
     @Environment(AppModel.self) private var appModel
     @StateObject private var handTrackingManager = HandTrackingManager()
     @State private var debugSpheres: [ModelEntity] = []
-    @State private var bridgeEntity: ModelEntity?
-    private let bridgeManager = BridgeEntityManager()
+    private let virtualGuitarManager = VirtualGuitarEntityManager()
     private let audioEngine = AudioEngine()
 
     // Add a state to track last tap time to prevent rapid repeated taps
@@ -37,24 +36,25 @@ struct ImmersiveView: View {
                     return sphere
                 }
 
-                let (bridge, leftCollider, rightCollider) = bridgeManager.setupBridgeAndColliders()
-
-                content.add(bridge)
-                content.add(leftCollider)
-                content.add(rightCollider)
-
-                // Store bridge entity for gesture
-                bridgeEntity = bridge
+                // Setup virtual guitar
+                let virtualGuitar = virtualGuitarManager.setupGuitarEntity()
+                content.add(virtualGuitar)
 
                 try? audioEngine.start()
             }
         } update: { content in
             updatePositions()
-        }.gesture(
+        }
+        .gesture(
             SpatialTapGesture()
-                .targetedToEntity(bridgeManager.bridgeObject ?? Entity())
+                .targetedToEntity(virtualGuitarManager.guitarEntity ?? Entity())
                 .onEnded { _ in
-                    // Basic tap handling
+                    let now = Date()
+                    // Prevent rapid repeated taps
+                    guard now.timeIntervalSince(lastTapTime) > 0.3 else { return }
+                    lastTapTime = now
+
+                    // Notify app model of tap
                     appModel.handleTap()
 
                     // Play a C major chord
@@ -66,12 +66,13 @@ struct ImmersiveView: View {
                     audioEngine.playChord(chordNotes, velocity: 0.7)
 
                     // Update visual state
-                    bridgeManager.handleTap()
+                    virtualGuitarManager.handleTap()
 
                     // Update app state
                     appModel.handleCollision()
                 }
-        ).task {
+        )
+        .task {
             await handTrackingManager.setupHandTracking()
         }
     }
@@ -91,13 +92,6 @@ struct ImmersiveView: View {
             let sphere = debugSpheres[index]
             sphere.position = position
             sphere.isEnabled = true
-
-            if index == 0 && debugSpheres.count > 1 { // Left hand and right sphere exists
-                bridgeManager.updateBridgeTransform(
-                    leftPosition: position,
-                    rightPosition: debugSpheres[1].position
-                )
-            }
         }
 
         // Hide spheres for hands that aren't visible
