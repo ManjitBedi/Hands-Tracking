@@ -19,5 +19,7 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSHandsTrackingUsageDescription</key>
+	<string>Hand tracking is required to place objects in space.</string>
 </dict>
 </plist>
