@@ -5,7 +5,6 @@
 //  Created by Manjit Bedi on 2025-02-16.
 //
 
-
 import RealityKit
 
 class VirtualGuitarEntityManager {
@@ -69,9 +68,9 @@ class VirtualGuitarEntityManager {
         guitarEntity.addChild(stringAreaEntity)
         guitarEntity.addChild(colliderEntity)
 
-        // Position the entire guitar lower and slightly angled
-        guitarEntity.position = [0, 0.8, -0.5]  // Lower than previous position
-        guitarEntity.orientation = simd_quatf(angle: -0.2, axis: [1, 0, 0])  // Slight downward angle
+        // Position the entire guitar
+        guitarEntity.position = [0, 0.65, -0.40]
+        //guitarEntity.orientation = simd_quatf(angle: -0.2, axis: [1, 0, 0])  // Slight downward angle
 
         // Store references
         self.guitarEntity = guitarEntity
