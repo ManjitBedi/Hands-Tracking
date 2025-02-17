@@ -17,7 +17,6 @@ struct ImmersiveView: View {
     private let virtualGuitarManager = VirtualGuitarEntityManager()
     private let audioEngine = AudioEngine()
 
-    // Add a state to track last tap time to prevent rapid repeated taps
     @State private var lastTapTime = Date.distantPast
 
     var body: some View {
@@ -47,7 +46,7 @@ struct ImmersiveView: View {
         }
         .gesture(
             SpatialTapGesture()
-                .targetedToEntity(virtualGuitarManager.guitarEntity ?? Entity())
+                .targetedToEntity(virtualGuitarManager.guitarEntity)  // Removed ?? Entity()
                 .onEnded { _ in
                     let now = Date()
                     // Prevent rapid repeated taps

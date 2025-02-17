@@ -8,163 +8,204 @@
 import SwiftUI
 import RealityKit
 
-
-struct VirtualGuitarConfig {
-    // Fretboard Configuration
-    var fretboardLength: Float = 0.2
-    var fretboardHeight: Float = 0.02
-    var fretboardWidth: Float = 0.1
-    var fretboardXOffset: Float = -0.3
-    var fretboardYOffset: Float = 0.02
-
-    // Body Configuration
-    var bodyLength: Float = 0.3
-    var bodyHeight: Float = 0.05
-    var bodyWidth: Float = 0.2
-    var bodyXOffset: Float = 0
-    var bodyYOffset: Float = 0
-
-    // Tap Area Configuration
-    var tapAreaLength: Float = 0.1
-    var tapAreaHeight: Float = 0.03
-    var tapAreaWidth: Float = 0.05
-    var tapAreaXOffset: Float = 0.1
-    var tapAreaYOffset: Float = 0.04
-
-    // Overall Guitar Positioning
-    var guitarXPosition: Float = 0
-    var guitarYPosition: Float = 0.8
-    var guitarZPosition: Float = -0.5
-    var guitarAngle: Float = -0.2
-}
-
 class VirtualGuitar {
-    let config: VirtualGuitarConfig
+    let dimensions: GuitarDimensions
     let entity: ModelEntity
 
     private let fretboardEntity: ModelEntity
     private let bodyEntity: ModelEntity
-    private let tapAreaEntity: ModelEntity
+    private let stringAreaEntity: ModelEntity
+    private let strumAreaEntity: ModelEntity
 
     private static let materials = (
-        fretboard: SimpleMaterial(color: .green, isMetallic: false),
+        fretboard: SimpleMaterial(color: .brown, isMetallic: false),
         body: SimpleMaterial(color: .brown, isMetallic: false),
-        tapArea: SimpleMaterial(color: .gray, isMetallic: true)
+        strings: SimpleMaterial(color: .gray, isMetallic: true),
+        strumArea: SimpleMaterial(color: .gray, isMetallic: true)
     )
 
-    init(config: VirtualGuitarConfig = VirtualGuitarConfig()) {
-        self.config = config
-
-        // Create the main guitar entity
+    init(dimensions: GuitarDimensions = GuitarDimensions()) {
+        self.dimensions = dimensions
         self.entity = ModelEntity()
         entity.name = "VirtualGuitar"
 
-        // Create Fretboard
-        self.fretboardEntity = ModelEntity(
-            mesh: .generateBox(size: [
-                config.fretboardLength,
-                config.fretboardHeight,
-                config.fretboardWidth
-            ]),
-            materials: [Self.materials.fretboard]
-        )
-        fretboardEntity.name = "Fretboard"
-        fretboardEntity.position = [
-            config.fretboardXOffset,
-            config.fretboardYOffset,
-            0
-        ]
-
-        // Create Body
+        // Create body first as it's our reference point
         self.bodyEntity = ModelEntity(
-            mesh: .generateBox(size: [
-                config.bodyLength,
-                config.bodyHeight,
-                config.bodyWidth
-            ]),
+            mesh: .generateBox(size: dimensions.bodyDimensions),
             materials: [Self.materials.body]
         )
         bodyEntity.name = "Body"
-        bodyEntity.position = [
-            config.bodyXOffset,
-            config.bodyYOffset,
-            0
-        ]
 
-        // Create Tap Area
-        self.tapAreaEntity = ModelEntity(
-            mesh: .generateBox(size: [
-                config.tapAreaLength,
-                config.tapAreaHeight,
-                config.tapAreaWidth
-            ]),
-            materials: [Self.materials.tapArea]
+        // Create fretboard aligned with body's left edge
+        self.fretboardEntity = ModelEntity(
+            mesh: .generateBox(size: dimensions.fretboardDimensions),
+            materials: [Self.materials.fretboard]
         )
-        tapAreaEntity.name = "TapArea"
-        tapAreaEntity.position = [
-            config.tapAreaXOffset,
-            config.tapAreaYOffset,
-            0
-        ]
-        tapAreaEntity.collision = CollisionComponent(shapes: [
-            .generateBox(size: [
-                config.tapAreaLength,
-                config.tapAreaHeight,
-                config.tapAreaWidth
-            ])
-        ])
-        tapAreaEntity.components[InputTargetComponent.self] = InputTargetComponent()
+        fretboardEntity.name = "Fretboard"
+
+        // Create string area centered on fretboard
+        self.stringAreaEntity = ModelEntity(
+            mesh: .generateBox(size: dimensions.stringAreaDimensions),
+            materials: [Self.materials.strings]
+        )
+        stringAreaEntity.name = "StringArea"
+
+        // Create strum area with configurable alignment
+        self.strumAreaEntity = ModelEntity(
+            mesh: .generateBox(size: dimensions.strumAreaDimensions),
+            materials: [Self.materials.strumArea]
+        )
+        strumAreaEntity.name = "StrumArea"
+
+        // Position everything
+        positionComponents()
 
         // Assemble the guitar
-        entity.addChild(fretboardEntity)
         entity.addChild(bodyEntity)
-        entity.addChild(tapAreaEntity)
+        entity.addChild(fretboardEntity)
+        fretboardEntity.addChild(stringAreaEntity)
+        bodyEntity.addChild(strumAreaEntity)
 
-        // Position and orient the guitar
-        entity.position = [
-            config.guitarXPosition,
-            config.guitarYPosition,
-            config.guitarZPosition
+        // Add interaction components to strum area
+        setupInteraction()
+    }
+
+    private func positionComponents() {
+        // Body stays at origin
+        bodyEntity.position = [0, 0, 0]
+
+        // Position fretboard relative to body's left edge
+        fretboardEntity.position = [
+            -(dimensions.bodyDimensions.x + dimensions.fretboardDimensions.x) * 0.5,
+            (dimensions.fretboardDimensions.y - dimensions.bodyDimensions.y) * 0.5,
+            0
         ]
-        entity.orientation = simd_quatf(angle: .pi, axis: [0, 1, 0])
+
+        // Position string area on top of fretboard
+        stringAreaEntity.position = [
+            0,
+            (dimensions.stringAreaDimensions.y + dimensions.fretboardDimensions.y) * 0.5,
+            0
+        ]
+
+        // Position strum area based on alignment
+        let strumX: Float
+        switch dimensions.strumAreaAlignment {
+        case .center:
+            strumX = 0
+        case .rightEdge:
+            strumX = (dimensions.bodyDimensions.x - dimensions.strumAreaDimensions.x) * 0.5
+        }
+
+        strumAreaEntity.position = [
+            strumX,
+            (dimensions.strumAreaDimensions.y + dimensions.bodyDimensions.y) * 0.5,
+            0
+        ]
+    }
+
+    private func setupInteraction() {
+        strumAreaEntity.collision = CollisionComponent(
+            shapes: [.generateBox(size: dimensions.strumAreaDimensions)]
+        )
+        strumAreaEntity.components[InputTargetComponent.self] = InputTargetComponent()
     }
 
     func handleTap() {
-        tapAreaEntity.model?.materials = [SimpleMaterial(color: .red, isMetallic: true)]
+        strumAreaEntity.model?.materials = [SimpleMaterial(color: .red, isMetallic: true)]
 
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(500))
-            tapAreaEntity.model?.materials = [Self.materials.tapArea]
+            strumAreaEntity.model?.materials = [Self.materials.strumArea]
         }
     }
 }
 
-struct VirtualGuitarPreview: View {
-    let config: VirtualGuitarConfig
+// Preview support
+class PreviewGuitarManager {
+    let dimensions: GuitarDimensions
 
-    init(config: VirtualGuitarConfig = VirtualGuitarConfig()) {
-        self.config = config
+    init(dimensions: GuitarDimensions = GuitarDimensions()) {
+        self.dimensions = dimensions
+    }
+}
+
+struct HackedGuitarPreview: View {
+    @State private var guitarManager: PreviewGuitarManager
+
+    init(dimensions: GuitarDimensions = GuitarDimensions()) {
+        _guitarManager = State(initialValue: PreviewGuitarManager(dimensions: dimensions))
     }
 
     var body: some View {
         RealityView { content in
-            let guitarManager = VirtualGuitarEntityManager(config: config)
-            let guitarEntity = guitarManager.setupGuitarEntity()
+            // Body
+            let bodyEntity = ModelEntity(
+                mesh: .generateBox(size: guitarManager.dimensions.bodyDimensions),
+                materials: [SimpleMaterial(color: .brown, isMetallic: false)]
+            )
+            bodyEntity.position = [0, 0, 0]
+
+            // Fretboard
+            let fretboardEntity = ModelEntity(
+                mesh: .generateBox(size: guitarManager.dimensions.fretboardDimensions),
+                materials: [SimpleMaterial(color: .brown, isMetallic: false)]
+            )
+            fretboardEntity.position = [
+                -(guitarManager.dimensions.bodyDimensions.x + guitarManager.dimensions.fretboardDimensions.x) * 0.5,
+                (guitarManager.dimensions.fretboardDimensions.y - guitarManager.dimensions.bodyDimensions.y) * 0.5,
+                0
+            ]
+
+            // String Area
+            let stringAreaEntity = ModelEntity(
+                mesh: .generateBox(size: guitarManager.dimensions.stringAreaDimensions),
+                materials: [SimpleMaterial(color: .gray, isMetallic: true)]
+            )
+            stringAreaEntity.position = [
+                0,
+                (guitarManager.dimensions.stringAreaDimensions.y + guitarManager.dimensions.fretboardDimensions.y) * 0.5,
+                0
+            ]
+
+            // Strum Area
+            let strumAreaEntity = ModelEntity(
+                mesh: .generateBox(size: guitarManager.dimensions.strumAreaDimensions),
+                materials: [SimpleMaterial(color: .gray, isMetallic: true)]
+            )
+
+            let strumX: Float = guitarManager.dimensions.strumAreaAlignment == .center ? 0 :
+                (guitarManager.dimensions.bodyDimensions.x - guitarManager.dimensions.strumAreaDimensions.x) * 0.5
+
+            strumAreaEntity.position = [
+                strumX,
+                (guitarManager.dimensions.strumAreaDimensions.y + guitarManager.dimensions.bodyDimensions.y) * 0.5,
+                0
+            ]
+
+            // Create a parent entity to group all parts
+            let guitarEntity = ModelEntity()
+            guitarEntity.addChild(bodyEntity)
+            guitarEntity.addChild(fretboardEntity)
+            fretboardEntity.addChild(stringAreaEntity)
+            bodyEntity.addChild(strumAreaEntity)
+
+            // Rotate the entire guitar entity
+            guitarEntity.orientation = simd_quatf(angle: .pi/2, axis: [1, 0, 0])
+
             content.add(guitarEntity)
         }
     }
 }
 
-// Xcode Preview
-#Preview {
-    VirtualGuitarPreview()
+#Preview(windowStyle: .volumetric) {
+    HackedGuitarPreview()
 }
 
-// Alternative preview with custom configuration
-#Preview("Custom Guitar") {
-    VirtualGuitarPreview(config: VirtualGuitarConfig(
-        fretboardLength: 0.25,
-        bodyLength: 0.35,
-        tapAreaXOffset: 0.15
-    ))
+#Preview("Right-aligned Strum Area", windowStyle: .volumetric) {
+    HackedGuitarPreview(dimensions: {
+        var dims = GuitarDimensions()
+        dims.strumAreaAlignment = .rightEdge
+        return dims
+    }())
 }
