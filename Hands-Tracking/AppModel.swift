@@ -14,6 +14,12 @@ enum AuthorizationState {
     case denied
 }
 
+enum AppEvent: Equatable {
+    case handTrackingStarted
+    case handTrackingFailed(String)
+    case tapDetected
+    case collisionDetected
+}
 
 /// Maintains app-wide state
 @MainActor
@@ -28,12 +34,17 @@ class AppModel {
     var immersiveSpaceState = ImmersiveSpaceState.closed
     var authorizationState: AuthorizationState = .notDetermined
 
-    private var handTrackingSession: ARKitSession?
-
     var handPositions: [HandAnchor] = []
+    var currentEvent: AppEvent?
 
     private var session: ARKitSession?
     private var handTracking: HandTrackingProvider?
+
+    var isColliding = false
+
+    // Timer for resetting collision state
+    private var collisionTimer: Timer?
+    private var eventClearTimer: Timer?
 
     init() {
         Task {
@@ -47,11 +58,16 @@ class AppModel {
         handTracking = HandTrackingProvider()
 
         guard let session = session,
-              let handTracking = handTracking else { return }
+              let handTracking = handTracking else {
+            updateEvent(.handTrackingFailed("Session initialization failed"))
+            return
+        }
 
         do {
-            authorizationState = .authorized  // Explicitly set authorization
+            authorizationState = .authorized
             try await session.run([handTracking])
+
+            updateEvent(.handTrackingStarted)
 
             for await update in handTracking.anchorUpdates {
                 switch update.event {
@@ -66,8 +82,35 @@ class AppModel {
                 }
             }
         } catch {
-            print("Failed to initialize hand tracking: \(error)")
+            updateEvent(.handTrackingFailed(error.localizedDescription))
             authorizationState = .denied
+        }
+    }
+
+    func handleTap() {
+        updateEvent(.tapDetected)
+    }
+
+    func handleCollision() {
+        updateEvent(.collisionDetected)
+        isColliding = true
+        collisionTimer?.invalidate()
+        collisionTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.isColliding = false
+            }
+        }
+    }
+
+    private func updateEvent(_ event: AppEvent) {
+        currentEvent = event
+
+        // Clear the event after a short delay
+        eventClearTimer?.invalidate()
+        eventClearTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.currentEvent = nil
+            }
         }
     }
 }

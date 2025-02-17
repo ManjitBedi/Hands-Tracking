@@ -11,14 +11,18 @@ import RealityKitContent
 import SwiftUI
 
 struct ImmersiveView: View {
-    @State private var handPositions: [HandAnchor] = []
+    @Environment(AppModel.self) private var appModel
+    @StateObject private var handTrackingManager = HandTrackingManager()
     @State private var debugSpheres: [ModelEntity] = []
-    @State private var session: ARKitSession?
-    @State private var handTracking: HandTrackingProvider?
+    @State private var bridgeEntity: ModelEntity?
+    private let bridgeManager = BridgeEntityManager()
+    private let audioEngine = AudioEngine()
+
+    // Add a state to track last tap time to prevent rapid repeated taps
+    @State private var lastTapTime = Date.distantPast
 
     var body: some View {
         RealityView { content in
-            // Add the initial RealityKit content
             if let immersiveContentEntity = try? await Entity(named: "Immersive", in: realityKitContentBundle) {
                 content.add(immersiveContentEntity)
 
@@ -33,23 +37,51 @@ struct ImmersiveView: View {
                     return sphere
                 }
 
+                let (bridge, leftCollider, rightCollider) = bridgeManager.setupBridgeAndColliders()
+
+                content.add(bridge)
+                content.add(leftCollider)
+                content.add(rightCollider)
+
+                // Store bridge entity for gesture
+                bridgeEntity = bridge
+
+                try? audioEngine.start()
             }
         } update: { content in
-            updateHandPositions()
-        }
-        .task {
-            await setupHandTracking()
+            updatePositions()
+        }.gesture(
+            SpatialTapGesture()
+                .targetedToEntity(bridgeManager.bridgeObject ?? Entity())
+                .onEnded { _ in
+                    // Basic tap handling
+                    appModel.handleTap()
+
+                    // Play a C major chord
+                    let chordNotes = [
+                        (note: MusicalNote.C, octave: 4),
+                        (note: MusicalNote.E, octave: 4),
+                        (note: MusicalNote.G, octave: 4)
+                    ]
+                    audioEngine.playChord(chordNotes, velocity: 0.7)
+
+                    // Update visual state
+                    bridgeManager.handleTap()
+
+                    // Update app state
+                    appModel.handleCollision()
+                }
+        ).task {
+            await handTrackingManager.setupHandTracking()
         }
     }
 
-    private func updateHandPositions() {
-        let visibleHands = handPositions.prefix(2)
+    private func updatePositions() {
+        let visibleHands = handTrackingManager.handPositions.prefix(2)
 
-        // Update hand positions and spheres
         for (index, hand) in visibleHands.enumerated() {
             guard index < debugSpheres.count else { break }
 
-            // Get position from transform
             let transform = hand.originFromAnchorTransform
             let position = SIMD3<Float>(
                 transform.columns.3.x,
@@ -60,44 +92,17 @@ struct ImmersiveView: View {
             sphere.position = position
             sphere.isEnabled = true
 
-        }
-    }
-
-    private func setupHandTracking() async {
-        print("Setting up hand tracking")
-        session = ARKitSession()
-        handTracking = HandTrackingProvider()
-
-        guard let session = session,
-            let handTracking = handTracking
-        else { return }
-
-        do {
-            try await session.run([handTracking])
-            print("Hand tracking session started")
-            await processHandTrackingUpdates(handTracking)
-        } catch {
-            print("Failed to initialize hand tracking: \(error)")
-        }
-    }
-
-    private func processHandTrackingUpdates(_ handTracking: HandTrackingProvider) async {
-        for await update in handTracking.anchorUpdates {
-            switch update.event {
-            case .added, .updated:
-                if let index = handPositions.firstIndex(where: { $0.id == update.anchor.id }) {
-                    handPositions[index] = update.anchor
-                } else {
-                    handPositions.append(update.anchor)
-                }
-            case .removed:
-                handPositions.removeAll(where: { $0.id == update.anchor.id })
+            if index == 0 && debugSpheres.count > 1 { // Left hand and right sphere exists
+                bridgeManager.updateBridgeTransform(
+                    leftPosition: position,
+                    rightPosition: debugSpheres[1].position
+                )
             }
         }
-    }
-}
 
-#Preview(immersionStyle: .mixed) {
-    ImmersiveView()
-        .environment(AppModel())
+        // Hide spheres for hands that aren't visible
+        for i in visibleHands.count..<debugSpheres.count {
+            debugSpheres[i].isEnabled = false
+        }
+    }
 }
