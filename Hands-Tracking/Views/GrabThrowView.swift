@@ -10,6 +10,8 @@ import RealityKit
 import ARKit
 import simd
 
+/// Hacky code made with Pexplexity than Claude
+/// When the view is created, a sphere is anchored to the right hand which can be thrown with a drag gesture
 struct GrabThrowView: View {
     @State private var anchor = AnchorEntity()
     @State private var sphere: ModelEntity?
@@ -25,6 +27,27 @@ struct GrabThrowView: View {
 
     var body: some View {
         VStack {
+            // Manual controls
+            HStack(spacing: 20) {
+                Button("Arm New Sphere") {
+                    createNewSphere()
+                }
+                .padding()
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+
+                Button("Clear Trails") {
+                    clearAllTrails()
+                }
+                .padding()
+                .background(Color.red)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+            }
+
+            Spacer()
+
             RealityView { content in
                 // Create hand tracking anchors
                 let rightHand = AnchorEntity(.hand(.right, location: .palm))
@@ -40,7 +63,7 @@ struct GrabThrowView: View {
                 createNewSphere()
 
             } update: { content in
-                // Remove state modification from here
+
             }
             .gesture(
                 // Detect throwing gesture
@@ -76,26 +99,6 @@ struct GrabThrowView: View {
                     }
             )
 
-            Spacer()
-
-            // Manual controls
-            HStack(spacing: 20) {
-                Button("Arm New Sphere") {
-                    createNewSphere()
-                }
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-
-                Button("Clear Trails") {
-                    clearAllTrails()
-                }
-                .padding()
-                .background(Color.red)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-            }
         }
     }
 
