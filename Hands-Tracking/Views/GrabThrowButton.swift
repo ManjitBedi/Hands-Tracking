@@ -1,13 +1,13 @@
 //
-//  ToggleImmersiveSpaceButton.swift
+//  ToggleImmersiveSpaceButton 2.swift
 //  Hands-Tracking
 //
-//  Created by Manjit Bedi on 2025-02-16.
+//  Created by Manjit Bedi on 2025-09-24.
 //
 
 import SwiftUI
 
-struct ToggleImmersiveSpaceButton: View {
+struct GrabThrowButton: View {
 
     @Environment(AppModel.self) private var appModel
 
@@ -16,6 +16,8 @@ struct ToggleImmersiveSpaceButton: View {
 
     var body: some View {
         Button {
+            appModel.selectedContent = .GrabThrow
+
             Task { @MainActor in
                 switch appModel.immersiveSpaceState {
                     case .open:
@@ -49,7 +51,7 @@ struct ToggleImmersiveSpaceButton: View {
                 }
             }
         } label: {
-            Text(appModel.immersiveSpaceState == .open ? "Hide Immersive Space" : "Show Immersive Space")
+            Text(appModel.immersiveSpaceState == .open ? "🏐 Immersive Space" : "🏐 Show Space")
         }
         .disabled(appModel.immersiveSpaceState == .inTransition)
         .animation(.none, value: 0)

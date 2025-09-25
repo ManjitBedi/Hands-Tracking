@@ -20,7 +20,9 @@ struct ContentView: View {
             Text("Hands Tracking Demo")
                 .font(.title)
 
-            ToggleImmersiveSpaceButton()
+            AirGuitarButton()
+
+            GrabThrowButton()
 
             // Event display area
             VStack {

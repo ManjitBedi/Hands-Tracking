@@ -10,7 +10,7 @@ import RealityKit
 import RealityKitContent
 import SwiftUI
 
-struct ImmersiveView: View {
+struct AirGuitarImmersiveView: View {
     @Environment(AppModel.self) private var appModel
     @StateObject private var handTrackingManager = HandTrackingManager()
     @State private var debugSpheres: [ModelEntity] = []

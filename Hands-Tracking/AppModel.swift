@@ -34,6 +34,13 @@ class AppModel {
     var immersiveSpaceState = ImmersiveSpaceState.closed
     var authorizationState: AuthorizationState = .notDetermined
 
+    enum ContentChoice {
+        case AirGuitar
+        case GrabThrow
+    }
+
+    var selectedContent: ContentChoice = .AirGuitar
+
     var handPositions: [HandAnchor] = []
     var currentEvent: AppEvent?
 

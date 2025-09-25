@@ -19,14 +19,26 @@ struct Hands_TrackingApp: App {
         }
 
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
-            ImmersiveView()
-                .environment(appModel)
-                .onAppear {
-                    appModel.immersiveSpaceState = .open
-                }
-                .onDisappear {
-                    appModel.immersiveSpaceState = .closed
-                }
+            if appModel.selectedContent == .AirGuitar {
+                AirGuitarImmersiveView()
+                    .environment(appModel)
+                    .onAppear {
+                        appModel.immersiveSpaceState = .open
+                    }
+                    .onDisappear {
+                        appModel.immersiveSpaceState = .closed
+                    }
+            } else {
+                GrabThrowView()
+                    .environment(appModel)
+                    .onAppear {
+                        appModel.immersiveSpaceState = .open
+                    }
+                    .onDisappear {
+                        appModel.immersiveSpaceState = .closed
+                    }
+
+            }
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
      }
