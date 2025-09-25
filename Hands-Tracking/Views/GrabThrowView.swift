@@ -193,6 +193,7 @@ struct GrabThrowView: View {
         lastVelocity = nil
     }
 
+    // TODO: change this to a particle system or visual effect
     private func startTrailEffect(for sphere: Entity) {
         // Create a custom trail using multiple small spheres
         _ = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
