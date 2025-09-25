@@ -37,9 +37,6 @@ struct GrabThrowView: View {
                 .foregroundColor(.white)
                 .cornerRadius(10)
 
-                Button("Clear Trails") {
-                    clearAllTrails()
-                }
                 .padding()
                 .background(Color.red)
                 .foregroundColor(.white)
@@ -184,77 +181,30 @@ struct GrabThrowView: View {
             sphere.components.set(PhysicsMotionComponent(linearVelocity: throwVelocity))
         }
 
-        // Stop trail effect after delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            self.stopTrailEffect()
-        }
-
         // Clean up
         lastVelocity = nil
     }
 
     // TODO: change this to a particle system or visual effect
     private func startTrailEffect(for sphere: Entity) {
-        // Create a custom trail using multiple small spheres
-        _ = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
-            guard let currentSphere = self.sphere,
-                  currentSphere == sphere,
-                  !self.isAttachedToHand else {
-                timer.invalidate()
-                return
-            }
+        // Remove any existing emitter (optional, for safety)
+        sphere.components.remove(ParticleEmitterComponent.self)
 
-            // Create trail particle - much smaller and more transparent
-            let trailParticle = ModelEntity(
-                mesh: .generateSphere(radius: 0.005), // Very small - 5mm
-                materials: [SimpleMaterial(color: UIColor.orange.withAlphaComponent(0.4), isMetallic: false)]
-            )
+        // Create and configure a streak-style particle emitter
+        var emitter = ParticleEmitterComponent()
+        emitter.emitterShape = .sphere
+        emitter.emitterShapeSize = [0.01, 0.01, 0.01]
+        emitter.mainEmitter.birthRate = 900
+        emitter.mainEmitter.lifeSpan = 0.40
+        emitter.mainEmitter.size = 0.025
+        emitter.mainEmitter.color = .evolving(
+            start: .single(.orange),
+            end: .single(.clear)
+        )
 
-            trailParticle.position = sphere.position
-            trailParticle.transform.scale = [0.5, 0.5, 0.5] // Make even smaller
-            self.anchor.addChild(trailParticle)
-            self.trailEntities.append(trailParticle)
+        emitter.mainEmitter.opacityCurve = .linearFadeOut
 
-            // Fade out trail particle quickly
-            self.fadeOutTrailParticle(trailParticle)
-        }
-    }
-
-    private func fadeOutTrailParticle(_ particle: Entity) {
-        // Make particles much smaller and more transparent for trail effect
-        if let model = particle as? ModelEntity {
-            // Start very small and transparent
-            model.transform.scale = [0.3, 0.3, 0.3]
-            let material = SimpleMaterial(color: UIColor.orange.withAlphaComponent(0.3), isMetallic: false)
-            model.model?.materials = [material]
-        }
-
-        // Fade to red
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            if let model = particle as? ModelEntity {
-                let material = SimpleMaterial(color: UIColor.red.withAlphaComponent(0.2), isMetallic: false)
-                model.model?.materials = [material]
-                model.transform.scale = [0.2, 0.2, 0.2]
-            }
-        }
-
-        // Remove quickly for trail effect
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            particle.removeFromParent()
-            if let index = self.trailEntities.firstIndex(where: { $0 == particle }) {
-                self.trailEntities.remove(at: index)
-            }
-        }
-    }
-
-    private func stopTrailEffect() {
-        // Trail will naturally stop when sphere stops moving due to timer check
-    }
-
-    private func clearAllTrails() {
-        for trail in trailEntities {
-            trail.removeFromParent()
-        }
-        trailEntities.removeAll()
+        // Attach the trail emitter to the sphere entity
+        sphere.components.set(emitter)
     }
 }
