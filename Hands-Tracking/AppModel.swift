@@ -37,6 +37,7 @@ class AppModel {
     enum ContentChoice {
         case AirGuitar
         case GrabThrow
+        case Manipulate
     }
 
     var selectedContent: ContentChoice = .AirGuitar

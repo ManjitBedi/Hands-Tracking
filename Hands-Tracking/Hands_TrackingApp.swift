@@ -29,7 +29,7 @@ struct Hands_TrackingApp: App {
                     .onDisappear {
                         appModel.immersiveSpaceState = .closed
                     }
-            } else {
+            } else if appModel.selectedContent == .GrabThrow {
                 GrabThrowView()
                     .environment(appModel)
                     .onAppear {
@@ -39,6 +39,15 @@ struct Hands_TrackingApp: App {
                         appModel.immersiveSpaceState = .closed
                     }
 
+            } else {
+                ManipulateView()
+                    .environment(appModel)
+                    .onAppear {
+                        appModel.immersiveSpaceState = .open
+                    }
+                    .onDisappear {
+                        appModel.immersiveSpaceState = .closed
+                    }
             }
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)

@@ -24,6 +24,8 @@ struct ContentView: View {
 
             GrabThrowButton()
 
+            ManipulateButton()
+
             // Event display area
             VStack {
                 if let event = appModel.currentEvent {
