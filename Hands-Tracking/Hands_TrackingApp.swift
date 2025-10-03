@@ -17,6 +17,7 @@ struct Hands_TrackingApp: App {
             ContentView()
                 .environment(appModel)
         }
+        .defaultSize(width: 375, height: 600)
 
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
             if appModel.selectedContent == .AirGuitar {

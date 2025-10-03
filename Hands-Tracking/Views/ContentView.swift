@@ -79,7 +79,9 @@ struct ContentView: View {
     }
 }
 
-#Preview(windowStyle: .automatic) {
+
+#Preview(traits: .fixedLayout(width: 375, height: 500)) {
     ContentView()
+        .glassBackgroundEffect()
         .environment(AppModel())
 }
