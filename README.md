@@ -1,4 +1,4 @@
-This is an hack space for trying out using hand tracking in visioOS.
+This is an hack space for trying out using hand tracking & interaction in visionOS.
 
 As I work on diffrernt experiments, I will add a new button choice to main content view.
 
